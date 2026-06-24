@@ -326,9 +326,7 @@ async def help_cmd(ctx):
         embed.add_field(name=f"`{name}`", value=desc, inline=False)
     await ctx.send(embed=embed)
 
-# ══════════════════════════════════════════════════════════════
 #  자동 출제 태스크
-# ══════════════════════════════════════════════════════════════
 
 def start_auto_quiz(guild_id: int, channel_id: int, interval_min: int, package_key: str):
     # 기존 태스크 있으면 취소
@@ -369,7 +367,5 @@ def stop_auto_quiz(guild_id: int):
             pass
         del auto_quiz_tasks[guild_id]
 
-# ══════════════════════════════════════════════════════════════
 #  실행
-# ══════════════════════════════════════════════════════════════
 bot.run(TOKEN)
