@@ -2,9 +2,7 @@ import discord
 from discord.ext import commands, tasks
 import json
 import random
-import asyncio
 import os
-from datetime import datetime
 
 # ── 데이터 로드 헬퍼 ──────────────────────────────────────────
 def load_json(path):
@@ -36,11 +34,9 @@ def get_packages():
     return packages
 
 # ── 문제 출제 상태 관리 (채널별) ──────────────────────────────
-# { channel_id: { "question": ..., "answer": ..., "hint": ..., "active": bool } }
 active_questions = {}
 
 # ── 자동 출제 태스크 관리 ─────────────────────────────────────
-# { guild_id: { "channel_id": int, "interval": int, "package": str } }
 auto_quiz_tasks = {}
 
 # ── 점수 관련 헬퍼 ────────────────────────────────────────────
@@ -52,7 +48,7 @@ def add_score(user_id: str, username: str, amount: int = 1):
     if user_id not in scores:
         scores[user_id] = {"username": username, "score": 0}
     scores[user_id]["score"] += amount
-    scores[user_id]["username"] = username  # 닉네임 최신화
+    scores[user_id]["username"] = username
     save_json("data/scores.json", scores)
     return scores[user_id]["score"]
 
@@ -67,7 +63,7 @@ def get_guild_setting(guild_id: str):
     settings = get_settings()
     return settings.get(guild_id, {
         "package": "english_1",
-        "interval": 0,       # 0 = 자동출제 비활성화, 단위: 분
+        "interval": 0,
         "quiz_channel": None
     })
 
@@ -90,31 +86,52 @@ def pick_question(package_key: str):
     questions = packages[package_key]["questions"]
     return random.choice(questions)
 
-# ── 정답 체크 (유연하게) ──────────────────────────────────────
-def check_answer(user_answer: str, correct_answer: str) -> bool:
+# ── 정답 체크 ─────────────────────────────────────────────────
+def check_answer(user_answer: str, correct_answer: str, q_type: str) -> bool:
     user = user_answer.strip().lower().replace(" ", "")
+
+    if q_type == "ox":
+        ox_map = {"o": "o", "0": "o", "ㅇ": "o", "x": "x", "ㅌ": "x"}
+        user = ox_map.get(user, user)
+        return user == correct_answer.lower()
+
+    if q_type == "multiple_choice":
+        return user == correct_answer.strip()
+
     correct_list = [a.strip().lower().replace(" ", "") for a in correct_answer.split(",")]
     return user in correct_list
 
 # ── 문제 임베드 생성 ──────────────────────────────────────────
 def make_quiz_embed(q: dict, package_name: str) -> discord.Embed:
-    type_emoji = {"word": "📝", "grammar": "📖", "reading": "📚"}.get(q.get("type", ""), "❓")
+    category_emoji = {"word": "📝", "grammar": "📖", "reading": "📚"}.get(q.get("category", ""), "❓")
+    type_label = {"short_answer": "주관식", "multiple_choice": "객관식", "ox": "OX"}.get(q.get("type", ""), "")
+
     embed = discord.Embed(
-        title=f"{type_emoji} 문제 출제!",
+        title=f"{category_emoji} 문제 출제! [{type_label}]",
         description=f"**{q['question']}**",
         color=0x5865F2
     )
-    embed.set_footer(text=f"📦 {package_name} | 💡 힌트: !hint | ❌ 포기: !skip")
+
+    if q["type"] == "multiple_choice":
+        choices_text = "\n".join([f"`{i+1}` {c}" for i, c in enumerate(q["choices"])])
+        embed.add_field(name="보기", value=choices_text, inline=False)
+        embed.set_footer(text=f"📦 {package_name} | 숫자로 답하세요 | 💡 힌트: !hint | ❌ 포기: !skip")
+    elif q["type"] == "ox":
+        embed.set_footer(text=f"📦 {package_name} | O 또는 X로 답하세요 | 💡 힌트: !hint | ❌ 포기: !skip")
+    else:
+        embed.set_footer(text=f"📦 {package_name} | 💡 힌트: !hint | ❌ 포기: !skip")
+
     return embed
 
+# ══════════════════════════════════════════════════════════════
 #  이벤트
+# ══════════════════════════════════════════════════════════════
 
 @bot.event
 async def on_ready():
     print(f"✅ {bot.user} 로그인 완료!")
     print(f"📦 패키지: {list(get_packages().keys())}")
 
-    # 자동 출제 복구
     settings = get_settings()
     for guild_id, cfg in settings.items():
         if cfg.get("interval", 0) > 0 and cfg.get("quiz_channel"):
@@ -126,13 +143,11 @@ async def on_message(message: discord.Message):
         return
 
     channel_id = message.channel.id
-    guild_id = str(message.guild.id) if message.guild else None
 
-    # 정답 체크 (명령어 아닐 때만)
     if not message.content.startswith(PREFIX):
         if channel_id in active_questions and active_questions[channel_id]["active"]:
             q = active_questions[channel_id]
-            if check_answer(message.content, q["answer"]):
+            if check_answer(message.content, q["answer"], q["type"]):
                 active_questions[channel_id]["active"] = False
                 new_score = add_score(str(message.author.id), message.author.display_name)
 
@@ -147,9 +162,10 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
+# ══════════════════════════════════════════════════════════════
 #  명령어
+# ══════════════════════════════════════════════════════════════
 
-# !퀴즈 - 문제 출제
 @bot.command(name="퀴즈", aliases=["quiz", "q"])
 async def quiz(ctx):
     channel_id = ctx.channel.id
@@ -172,13 +188,14 @@ async def quiz(ctx):
         "question": q["question"],
         "answer": q["answer"],
         "hint": q.get("hint", "힌트 없음"),
+        "type": q["type"],
+        "choices": q.get("choices", []),
         "active": True
     }
 
     embed = make_quiz_embed(q, packages[package_key]["name"])
     await ctx.send(embed=embed)
 
-# !hint - 힌트
 @bot.command(name="hint", aliases=["힌트"])
 async def hint(ctx):
     channel_id = ctx.channel.id
@@ -188,24 +205,34 @@ async def hint(ctx):
     hint_text = active_questions[channel_id]["hint"]
     await ctx.send(f"💡 힌트: **{hint_text}**")
 
-# !skip - 포기
 @bot.command(name="skip", aliases=["포기", "스킵"])
 async def skip(ctx):
     channel_id = ctx.channel.id
     if channel_id not in active_questions or not active_questions[channel_id]["active"]:
         await ctx.send("❓ 현재 진행 중인 문제가 없어요.")
         return
+
     answer = active_questions[channel_id]["answer"]
+    q_type = active_questions[channel_id]["type"]
+    choices = active_questions[channel_id].get("choices", [])
     active_questions[channel_id]["active"] = False
+
+    if q_type == "multiple_choice" and choices:
+        try:
+            answer_text = choices[int(answer) - 1]
+            answer_display = f"{answer}번 - {answer_text}"
+        except Exception:
+            answer_display = answer
+    else:
+        answer_display = answer
 
     embed = discord.Embed(
         title="💊 탐아 드세요~",
-        description=f"정답은 **`{answer}`** 이었어요!",
+        description=f"정답은 **`{answer_display}`** 이었어요!",
         color=0xED4245
     )
     await ctx.send(embed=embed)
 
-# !랭킹 - 랭킹 출력
 @bot.command(name="랭킹", aliases=["ranking", "rank", "순위"])
 async def ranking(ctx):
     scores = get_scores()
@@ -226,7 +253,6 @@ async def ranking(ctx):
         )
     await ctx.send(embed=embed)
 
-# !내점수 - 본인 점수
 @bot.command(name="내점수", aliases=["myscore", "점수"])
 async def my_score(ctx):
     scores = get_scores()
@@ -235,7 +261,6 @@ async def my_score(ctx):
         await ctx.send("아직 점수가 없어요! `!퀴즈` 로 시작해보세요 :D")
         return
     score = scores[uid]["score"]
-
     sorted_scores = sorted(scores.items(), key=lambda x: x[1]["score"], reverse=True)
     rank = next((i+1 for i, (k, _) in enumerate(sorted_scores) if k == uid), "?")
 
@@ -246,20 +271,23 @@ async def my_score(ctx):
     )
     await ctx.send(embed=embed)
 
-# !패키지 - 패키지 목록 & 선택
 @bot.command(name="패키지", aliases=["package", "pkg"])
 async def package_cmd(ctx, key: str = None):
     packages = get_packages()
     guild_id = str(ctx.guild.id) if ctx.guild else "dm"
 
     if key is None:
-        # 목록 출력
         embed = discord.Embed(title="📦 문제 패키지 목록", color=0x5865F2)
         cfg = get_guild_setting(guild_id)
         current = cfg.get("package", "english_1")
         for k, p in packages.items():
             is_current = "✅ " if k == current else ""
-            embed.add_field(name=f"{is_current}`{k}`", value=p["description"], inline=False)
+            q_count = len(p["questions"])
+            embed.add_field(
+                name=f"{is_current}`{k}`",
+                value=f"{p['description']} ({q_count}문제)",
+                inline=False
+            )
         embed.set_footer(text="변경: !패키지 [패키지이름]")
         await ctx.send(embed=embed)
     else:
@@ -269,9 +297,8 @@ async def package_cmd(ctx, key: str = None):
         update_guild_setting(guild_id, "package", key)
         await ctx.send(f"✅ 패키지를 **{packages[key]['name']}** 으로 변경했어요!")
 
-# !자동 [분] - 자동 출제 설정
 @bot.command(name="자동", aliases=["auto"])
-async def auto_quiz(ctx, interval: int = None):
+async def auto_quiz_cmd(ctx, interval: int = None):
     guild_id = str(ctx.guild.id) if ctx.guild else None
     if not guild_id:
         await ctx.send("❌ 서버에서만 사용 가능해요.")
@@ -287,7 +314,6 @@ async def auto_quiz(ctx, interval: int = None):
         return
 
     if interval == 0:
-        # 자동 출제 끄기
         stop_auto_quiz(int(guild_id))
         update_guild_setting(guild_id, "interval", 0)
         await ctx.send("⏹️ 자동 출제를 껐어요.")
@@ -303,14 +329,13 @@ async def auto_quiz(ctx, interval: int = None):
     start_auto_quiz(int(guild_id), ctx.channel.id, interval, cfg["package"])
     await ctx.send(f"⏱️ **{interval}분** 간격으로 자동 출제 시작! (이 채널에서)")
 
-# !도움 - 명령어 목록
 @bot.command(name="도움", aliases=["help", "명령어"])
 async def help_cmd(ctx):
     embed = discord.Embed(title="📖 StudyShot 명령어", color=0x5865F2)
     cmds = [
-        ("!퀴즈", "문제 출제"),
+        ("!퀴즈", "문제 출제 (주관식/객관식/OX 랜덤)"),
         ("!hint / !힌트", "현재 문제 힌트"),
-        ("!skip / !포기", "현재 문제 포기 (탐아)"),
+        ("!skip / !포기", "현재 문제 포기 (탐아 💊)"),
         ("!랭킹", "점수 랭킹 보기"),
         ("!내점수", "내 점수 & 순위 보기"),
         ("!패키지", "패키지 목록 보기"),
@@ -322,10 +347,11 @@ async def help_cmd(ctx):
         embed.add_field(name=f"`{name}`", value=desc, inline=False)
     await ctx.send(embed=embed)
 
+# ══════════════════════════════════════════════════════════════
 #  자동 출제 태스크
+# ══════════════════════════════════════════════════════════════
 
 def start_auto_quiz(guild_id: int, channel_id: int, interval_min: int, package_key: str):
-    # 기존 태스크 있으면 취소
     stop_auto_quiz(guild_id)
 
     @tasks.loop(minutes=interval_min)
@@ -334,9 +360,8 @@ def start_auto_quiz(guild_id: int, channel_id: int, interval_min: int, package_k
         channel = bot.get_channel(channel_id)
         if not channel:
             return
-
         if channel_id in active_questions and active_questions[channel_id]["active"]:
-            return  # 아직 안 풀린 문제 있으면 패스
+            return
 
         packages = get_packages()
         if package_key not in packages:
@@ -347,6 +372,8 @@ def start_auto_quiz(guild_id: int, channel_id: int, interval_min: int, package_k
             "question": q["question"],
             "answer": q["answer"],
             "hint": q.get("hint", "힌트 없음"),
+            "type": q["type"],
+            "choices": q.get("choices", []),
             "active": True
         }
         embed = make_quiz_embed(q, packages[package_key]["name"])
@@ -363,5 +390,7 @@ def stop_auto_quiz(guild_id: int):
             pass
         del auto_quiz_tasks[guild_id]
 
+# ══════════════════════════════════════════════════════════════
 #  실행
+# ══════════════════════════════════════════════════════════════
 bot.run(TOKEN)
