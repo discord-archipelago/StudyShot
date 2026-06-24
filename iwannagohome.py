@@ -1,0 +1,101 @@
+import os
+import json
+
+print("🎯 StudyShot 세팅 시작!")
+
+# 폴더 생성
+os.makedirs("data", exist_ok=True)
+os.makedirs("packages", exist_ok=True)
+print("✅ 폴더 생성 완료")
+
+# config.json
+config = {
+    "token": "여기에_봇_토큰_입력",
+    "prefix": "!"
+}
+if not os.path.exists("config.json"):
+    with open("config.json", "w", encoding="utf-8") as f:
+        json.dump(config, f, ensure_ascii=False, indent=2)
+    print("✅ config.json 생성 완료")
+
+# data/scores.json
+if not os.path.exists("data/scores.json"):
+    with open("data/scores.json", "w", encoding="utf-8") as f:
+        json.dump({}, f, ensure_ascii=False, indent=2)
+    print("✅ data/scores.json 생성 완료")
+
+# data/settings.json
+if not os.path.exists("data/settings.json"):
+    with open("data/settings.json", "w", encoding="utf-8") as f:
+        json.dump({}, f, ensure_ascii=False, indent=2)
+    print("✅ data/settings.json 생성 완료")
+
+# packages/english_1.json - 1과 문제 패키지
+english_1 = {
+    "name": "영어 1과",
+    "description": "영어 교과서 1단원 단어 + 문법 + 본문 문제",
+    "questions": [
+        # 단어 문제 (영->한)
+        {"type": "word", "question": "'adjust'의 뜻은?", "answer": "조정하다", "hint": "조절하다 라고도 함"},
+        {"type": "word", "question": "'anticipate'의 뜻은?", "answer": "예상하다", "hint": "기대하다 라고도 함"},
+        {"type": "word", "question": "'anxiety'의 뜻은?", "answer": "불안", "hint": "염려 라고도 함"},
+        {"type": "word", "question": "'anxious'의 뜻은?", "answer": "불안해하는", "hint": "염려하는 라고도 함"},
+        {"type": "word", "question": "'applicable'의 뜻은?", "answer": "적용되는", "hint": "해당되는 라고도 함"},
+        {"type": "word", "question": "'appointment'의 뜻은?", "answer": "약속", "hint": "일정 잡는 것"},
+        {"type": "word", "question": "'arrangement'의 뜻은?", "answer": "배치", "hint": "배열 라고도 함"},
+        {"type": "word", "question": "'competition'의 뜻은?", "answer": "대회", "hint": "시합 라고도 함"},
+        {"type": "word", "question": "'demanding'의 뜻은?", "answer": "힘든", "hint": "부담이 큰 라고도 함"},
+        {"type": "word", "question": "'derive'의 뜻은?", "answer": "끌어내다", "hint": "얻다 라고도 함"},
+        {"type": "word", "question": "'dimension'의 뜻은?", "answer": "크기", "hint": "치수 라고도 함"},
+        {"type": "word", "question": "'elegant'의 뜻은?", "answer": "우아한", "hint": "세련된 느낌"},
+        {"type": "word", "question": "'embrace'의 뜻은?", "answer": "받아들이다", "hint": "수용하다 라고도 함"},
+        {"type": "word", "question": "'emergency'의 뜻은?", "answer": "비상", "hint": "긴급상황"},
+        {"type": "word", "question": "'encouragement'의 뜻은?", "answer": "격려", "hint": "응원하는 것"},
+        {"type": "word", "question": "'exhausted'의 뜻은?", "answer": "기진맥진한", "hint": "탈진한 라고도 함"},
+        {"type": "word", "question": "'flexible'의 뜻은?", "answer": "유연한", "hint": "융통성 있는 라고도 함"},
+        {"type": "word", "question": "'hospitalize'의 뜻은?", "answer": "입원시키다", "hint": "hospital에서 유래"},
+        {"type": "word", "question": "'incorporate'의 뜻은?", "answer": "포함하다", "hint": "통합하다 라고도 함"},
+        {"type": "word", "question": "'investigate'의 뜻은?", "answer": "조사하다", "hint": "수사하다 라고도 함"},
+        {"type": "word", "question": "'negotiate'의 뜻은?", "answer": "협상하다", "hint": "교섭하다 라고도 함"},
+        {"type": "word", "question": "'opportunity'의 뜻은?", "answer": "기회", "hint": "찬스!"},
+        {"type": "word", "question": "'passionate'의 뜻은?", "answer": "열정적인", "hint": "열렬한 라고도 함"},
+        {"type": "word", "question": "'relieve'의 뜻은?", "answer": "완화하다", "hint": "relief의 동사형"},
+        {"type": "word", "question": "'struggle'의 뜻은?", "answer": "애쓰다", "hint": "힘겹게 싸우다 라고도 함"},
+        {"type": "word", "question": "'suitable'의 뜻은?", "answer": "적합한", "hint": "적절한 라고도 함"},
+        {"type": "word", "question": "'thoroughly'의 뜻은?", "answer": "철저히", "hint": "철두철미하게 라고도 함"},
+        {"type": "word", "question": "'undergo'의 뜻은?", "answer": "겪다", "hint": "경험하다 라고도 함"},
+        {"type": "word", "question": "'unforgettable'의 뜻은?", "answer": "잊지 못할", "hint": "un + forgettable"},
+        {"type": "word", "question": "'witness'의 뜻은?", "answer": "목격자", "hint": "증인 라고도 함"},
+        # 단어 문제 (한->영)
+        {"type": "word", "question": "'결과적으로'를 영어로?", "answer": "as a result", "hint": "두 단어 이상임"},
+        {"type": "word", "question": "'가끔은'을 영어로?", "answer": "at times", "hint": "at으로 시작"},
+        {"type": "word", "question": "'미리'를 영어로?", "answer": "in advance", "hint": "in으로 시작"},
+        {"type": "word", "question": "'~로 이어지다'를 영어로?", "answer": "lead to", "hint": "두 단어"},
+        {"type": "word", "question": "'~을 기대하다'를 영어로?", "answer": "look forward to", "hint": "세 단어"},
+        {"type": "word", "question": "'~에 참가하다'를 영어로?", "answer": "participate in", "hint": "두 단어"},
+        {"type": "word", "question": "'이해하다'를 영어로? (두 단어 숙어)", "answer": "figure out", "hint": "figure로 시작"},
+        {"type": "word", "question": "'텅 비다'를 영어로? (두 단어 숙어)", "answer": "go blank", "hint": "go로 시작"},
+        {"type": "word", "question": "'떠맡다'를 영어로?", "answer": "take on", "hint": "두 단어"},
+        {"type": "word", "question": "'상연하다'를 영어로?", "answer": "put on", "hint": "두 단어"},
+        # 문법 문제
+        {"type": "grammar", "question": "재귀대명사 강조 용법에서 '직접'의 의미로 쓸 때, 재귀대명사는 어디에 위치하나요?", "answer": "강조하는 대상 바로 뒤 또는 문장 끝", "hint": "두 위치 모두 가능"},
+        {"type": "grammar", "question": "'by oneself'의 뜻은?", "answer": "혼자서", "hint": "홀로 라고도 함"},
+        {"type": "grammar", "question": "'beside oneself'의 뜻은?", "answer": "이성을 잃고", "hint": "어찌할 바를 모르고"},
+        {"type": "grammar", "question": "'of oneself'의 뜻은?", "answer": "저절로", "hint": "제 스스로"},
+        {"type": "grammar", "question": "suggest, insist, demand 뒤 that절에서 동사 형태는?", "answer": "should 동사원형", "hint": "should는 생략 가능"},
+        {"type": "grammar", "question": "주장/제안/요구 동사 4개를 말해보세요 (아무거나)", "answer": "insist suggest demand require", "hint": "recommend, advise, order도 있음"},
+        # 본문 문제
+        {"type": "reading", "question": "본문에서 Minji Song의 직업은?", "answer": "magazine editor", "hint": "온라인 잡지 편집자"},
+        {"type": "reading", "question": "수영을 시작하게 된 계기는?", "answer": "올림픽 수영 경기를 TV로 봐서", "hint": "금메달리스트를 보고"},
+        {"type": "reading", "question": "연극 공연 당일 무대 오르기 전 어떤 상황이었나요?", "answer": "불안해서 머릿속이 텅 빔", "hint": "go blank"},
+        {"type": "reading", "question": "landscape architect가 되려면 잘해야 하는 과목 2가지는?", "answer": "수학과 과학", "hint": "math and science"},
+        {"type": "reading", "question": "글쓰기에 관심을 갖게 된 계기는?", "answer": "입원 중 심심해서 글을 쓰기 시작함", "hint": "hospitalized"},
+    ]
+}
+
+with open("packages/english_1.json", "w", encoding="utf-8") as f:
+    json.dump(english_1, f, ensure_ascii=False, indent=2)
+print("✅ packages/english_1.json 생성 완료")
+
+print("\n🎉 세팅 완료! 이제 config.json에 봇 토큰 입력하고 bot.py 실행하면 됨!")
+print("📦 설치 필요: pip install discord.py")
