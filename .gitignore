@@ -1,0 +1,11 @@
+config.json
+
+
+data/
+
+
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+venv/
