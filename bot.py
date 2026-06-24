@@ -107,9 +107,7 @@ def make_quiz_embed(q: dict, package_name: str) -> discord.Embed:
     embed.set_footer(text=f"📦 {package_name} | 💡 힌트: !hint | ❌ 포기: !skip")
     return embed
 
-# ══════════════════════════════════════════════════════════════
 #  이벤트
-# ══════════════════════════════════════════════════════════════
 
 @bot.event
 async def on_ready():
@@ -149,9 +147,7 @@ async def on_message(message: discord.Message):
 
     await bot.process_commands(message)
 
-# ══════════════════════════════════════════════════════════════
 #  명령어
-# ══════════════════════════════════════════════════════════════
 
 # !퀴즈 - 문제 출제
 @bot.command(name="퀴즈", aliases=["quiz", "q"])
